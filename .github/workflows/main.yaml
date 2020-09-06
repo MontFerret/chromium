@@ -12,7 +12,7 @@ jobs:
       - name: Build and push Docker images to Docker Hub
         uses: docker/build-push-action@v1
         with:
-          username: ${{ env.GITHUB_ACTOR }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           repository: montferret/chromium
           tags: latest, ${{ env.RELEASE_VERSION }}
@@ -20,7 +20,7 @@ jobs:
       - name: Build and push Docker images to GitHub Docker Registry
         uses: docker/build-push-action@v1
         with:
-          username: ${{ env.GITHUB_ACTOR }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: docker.pkg.github.com
           repository: montferret/chromium
