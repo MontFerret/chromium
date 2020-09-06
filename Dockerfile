@@ -1,6 +1,7 @@
 FROM ubuntu:18.04
 
 LABEL maintainer "MontFerret Team <mont.ferret@gmail.com>"
+LABEL homepage "https://www.montferret.dev/"
 
 EXPOSE 9222
 
