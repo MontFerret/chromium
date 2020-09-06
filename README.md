@@ -11,7 +11,7 @@ The project provides a Docker image containing an optimized version of Chromium 
 $ docker pull montferret/chromium:latest
 
 # pull specific tagged version
-$ docker pull montferret/chromium::74.0.3717.1
+$ docker pull montferret/chromium:85.0.4182.0
 
 # run
 $ docker run -d -p 9222:9222 --rm --name headless-chromium montferret/chromium
