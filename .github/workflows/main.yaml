@@ -9,15 +9,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Build and push Docker images to Docker Hub
-        uses: docker/build-push-action@v1
-        with:
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-          repository: montferret/chromium
-          tags: latest
-          tag_with_ref: true
-          add_git_labels: true
+      # - name: Build and push Docker images to Docker Hub
+      #   uses: docker/build-push-action@v1
+      #   with:
+      #     username: ${{ github.actor }}
+      #     password: ${{ github.token }}
+      #     repository: montferret/chromium
+      #     tags: latest
+      #     tag_with_ref: true
+      #     add_git_labels: true
       - name: Build and push Docker images to GitHub Docker Registry
         uses: docker/build-push-action@v1
         with:
