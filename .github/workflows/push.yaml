@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs: 
   build: 
-    name: Build and push Docker images to DockerHub Registry
+    name: Build Docker image
     runs-on: ubuntu-latest
     steps:
       - 
