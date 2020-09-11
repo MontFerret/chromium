@@ -33,7 +33,7 @@ jobs:
           with:
             registry: ghcr.io
             username: ${{ github.actor }}
-            password: ${{ secrets.RELEASER_TOKEN }}
+            password: ${{ secrets.GITHUB_TOKEN }}
             repository: montferret/chromium
             tags: latest
             tag_with_ref: true
