@@ -7,18 +7,26 @@ The project provides a Docker image containing an optimized version of Chromium 
 
 ```bash
 
-# pull latest version
+# pull latest version from DockerHub Registry
 $ docker pull montferret/chromium:latest
 
-# pull specific tagged version
+# pull latest version from GitHub Registry
+$ docker pull ghcr.io/montferret/chromium:latest
+
+# pull specific tagged version from DockerHub Registry
 $ docker pull montferret/chromium:85.0.4182.0
 
+# pull specific tagged version from GitHub Registry
+$ docker pull ghcr.io/montferret/chromium:85.0.4182.0
+
 # run
-$ docker run -d -p 9222:9222 --rm --name headless-chromium montferret/chromium
+$ docker run -d -p 9222:9222 --name headless-chromium montferret/chromium
+$ docker run -d -p 9222:9222 --name headless-chromium ghcr.io/montferret/chromium
 
 # run with proxy
 
-$ docker run -d -p 9222:9222 --rm --name headless-chromium -e CHROME_OPTS='--proxy-server=my-proxy.com' montferret/chromium
+$ docker run -d -p 9222:9222 --name headless-chromium -e CHROME_OPTS='--proxy-server=my-proxy.com' montferret/chromium
+$ docker run -d -p 9222:9222 --name headless-chromium -e CHROME_OPTS='--proxy-server=my-proxy.com' ghcr.io/montferret/chromium
 
 ```
 
