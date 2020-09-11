@@ -32,7 +32,7 @@ jobs:
           uses: docker/build-push-action@v1
           with:
             registry: ghcr.io
-            username: ${{ github.actor }}
+            username: ${{ secrets.CR_USER }}
             password: ${{ secrets.CR_PAT }}
             repository: montferret/chromium
             tags: latest
