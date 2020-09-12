@@ -37,13 +37,11 @@ When using ``montferret/chromium`` as a base image to build an image that runs y
 ```bash
 FROM montferret/chromium:latest
 ...
-# Install dumb-init or tini
+# Install dumb-init
 RUN apt install dumb-init
-# or RUN apt install tini
 ...
 ENTRYPOINT ["dumb-init", "--"]
-# or ENTRYPOINT ["tini", "--"]
-CMD ["/path/to/your/program"]
+CMD ["/bin/sh", "-c", "./entrypoint.sh & YOUR_PROGRAM"]
 ```
 
 If running Docker 1.13.0 or later, use docker run's --init arg instead to reap zombie processes.
