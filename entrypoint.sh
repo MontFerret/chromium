@@ -55,7 +55,7 @@ CHROME_ARGS="--disable-background-networking \
 --safebrowsing-disable-auto-update \
 --single-process \
 --use-gl=swiftshader \
---user-data-dir=/data"
+--user-data-dir=$HOME"
 
 if [ -n "$CHROME_OPTS" ]; then
   CHROME_ARGS="${CHROME_ARGS} ${CHROME_OPTS}"
