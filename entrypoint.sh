@@ -39,7 +39,7 @@ CHROME_ARGS="--disable-background-networking \
 --hide-scrollbars \
 --ignore-certificate-errors \
 --ignore-certificate-errors-spki-list \
---ignore-gpu-blacklist \
+--ignore-gpu-blocklist \
 --ignore-ssl-errors \
 --log-level=0 \
 --metrics-recording-only \
