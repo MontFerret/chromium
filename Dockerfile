@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 LABEL maintainer "MontFerret Team <mont.ferret@gmail.com>"
 LABEL homepage "https://www.montferret.dev/"
@@ -6,11 +6,11 @@ LABEL homepage "https://www.montferret.dev/"
 EXPOSE 9222
 
 # https://omahaproxy.appspot.com/
-ENV REVISION=818858
+ENV REVISION=856583
 ENV DOWNLOAD_HOST=https://storage.googleapis.com
 
 RUN apt-get update -qqy \
-  && apt-get -qqy install apt-transport-https inotify-tools gnupg \
+  && DEBIAN_FRONTEND="noninteractive" apt-get -qqy install apt-transport-https inotify-tools gnupg \
     libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libcairo2 libcups2 \
     libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 \
     libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 \
