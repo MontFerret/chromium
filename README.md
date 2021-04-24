@@ -13,12 +13,6 @@ $ docker pull montferret/chromium:latest
 # pull latest version from GitHub Registry
 $ docker pull ghcr.io/montferret/chromium:latest
 
-# pull specific tagged version from DockerHub Registry
-$ docker pull montferret/chromium:90.0.4427.0
-
-# pull specific tagged version from GitHub Registry
-$ docker pull ghcr.io/montferret/chromium:90.0.4427.0
-
 # run
 $ docker run -d -p 9222:9222 --name headless-chromium montferret/chromium
 $ docker run -d -p 9222:9222 --name headless-chromium ghcr.io/montferret/chromium
