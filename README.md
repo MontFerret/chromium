@@ -26,7 +26,8 @@ $ docker run -d -p 9222:9222 --name headless-chromium -e CHROME_OPTS='--proxy-se
 
 ## Using as a base image
 
-When using ``montferret/chromium`` as a base image to build an image that runs your own program, you can experience zombie process problem. To reap zombie processeses, use dumb-init or tini on your Dockerfile's ENTRYPOINT:
+When using ``montferret/chromium`` as a base image to build an image that runs your own program, you can experience zombie process problem. 
+To reap zombie processeses, use dumb-init or tini on your Dockerfile's ENTRYPOINT:
 
 ```bash
 FROM montferret/chromium:latest
