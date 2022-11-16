@@ -6,7 +6,7 @@ LABEL homepage "https://www.montferret.dev/"
 EXPOSE 9222
 
 # https://omahaproxy.appspot.com/
-ENV REVISION=1056773
+ENV REVISION=1036826
 ENV DOWNLOAD_HOST=https://storage.googleapis.com
 
 RUN apt-get update -qqy \
