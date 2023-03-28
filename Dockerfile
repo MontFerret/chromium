@@ -6,6 +6,7 @@ LABEL homepage "https://www.montferret.dev/"
 EXPOSE 9222
 
 # https://omahaproxy.appspot.com/
+# https://chromiumdash.appspot.com/releases?platform=Linux
 ENV REVISION=1097615
 ENV DOWNLOAD_HOST=https://storage.googleapis.com
 
