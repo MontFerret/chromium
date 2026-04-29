@@ -1,0 +1,70 @@
+name: Build Docker image
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: montferret/chromium
+  CHROME_CHANNEL: Stable
+
+jobs:
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read Chrome version
+        id: chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f CHROME_VERSION ]; then
+            echo "CHROME_VERSION file is missing" >&2
+            exit 1
+          fi
+
+          version="$(cat CHROME_VERSION | tr -d '[:space:]')"
+
+          if [ -z "$version" ]; then
+            echo "CHROME_VERSION is empty" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Chrome version: $version"
+
+      - name: Validate Chrome for Testing download
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.chrome.outputs.version }}"
+          url="https://storage.googleapis.com/chrome-for-testing-public/${version}/linux64/chrome-linux64.zip"
+
+          echo "Checking $url"
+          curl -fsI "$url" >/dev/null
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          platforms: linux/amd64
+          build-args: |
+            IMAGE_VERSION=dev
+            CHROME_VERSION=${{ steps.chrome.outputs.version }}
+            CHROME_CHANNEL=${{ env.CHROME_CHANNEL }}
+          tags: |
+            montferret/chromium:dev

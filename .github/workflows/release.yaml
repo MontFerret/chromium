@@ -3,41 +3,122 @@ name: Build and push Docker images
 on:
   release:
     types:
-      - created
+      - published
 
-jobs: 
-  dockerhub: 
-    name: Build and push Docker images to DockerHub Registry
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_DOCKERHUB: montferret/chromium
+  IMAGE_GHCR: ghcr.io/montferret/chromium
+  CHROME_CHANNEL: Stable
+
+jobs:
+  docker:
+    name: Build and push Docker images
     runs-on: ubuntu-latest
+
     steps:
-      - 
-        name: Checkout code
-        uses: actions/checkout@v2
-      - 
-        name: Build and push
-        uses: docker/build-push-action@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read Chrome version
+        id: chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f CHROME_VERSION ]; then
+            echo "CHROME_VERSION file is missing" >&2
+            exit 1
+          fi
+
+          version="$(cat CHROME_VERSION | tr -d '[:space:]')"
+
+          if [ -z "$version" ]; then
+            echo "CHROME_VERSION is empty" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Chrome version: $version"
+
+      - name: Validate Chrome for Testing download
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.chrome.outputs.version }}"
+          url="https://storage.googleapis.com/chrome-for-testing-public/${version}/linux64/chrome-linux64.zip"
+
+          echo "Checking $url"
+          curl -fsI "$url" >/dev/null
+
+      - name: Prepare Docker tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_tag="${{ github.event.release.tag_name }}"
+          chrome_version="${{ steps.chrome.outputs.version }}"
+          prerelease="${{ github.event.release.prerelease }}"
+
+          {
+            echo "tags<<EOF"
+
+            echo "${IMAGE_DOCKERHUB}:${release_tag}"
+            echo "${IMAGE_DOCKERHUB}:${release_tag}-chrome${chrome_version}"
+
+            echo "${IMAGE_GHCR}:${release_tag}"
+            echo "${IMAGE_GHCR}:${release_tag}-chrome${chrome_version}"
+
+            if [ "$prerelease" = "false" ]; then
+              echo "${IMAGE_DOCKERHUB}:latest"
+              echo "${IMAGE_DOCKERHUB}:stable"
+
+              echo "${IMAGE_GHCR}:latest"
+              echo "${IMAGE_GHCR}:stable"
+            fi
+
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: montferret/chromium
-          tags: latest
-          tag_with_ref: true
-          add_git_labels: true
-  github:
-      name: Build and push Docker images to GitHub Registry
-      runs-on: ubuntu-latest
-      steps:
-        - 
-          name: Checkout code
-          uses: actions/checkout@v2
-        - 
-          name: Build and push
-          uses: docker/build-push-action@v1
-          with:
-            registry: ghcr.io
-            username: ${{ secrets.CR_USER }}
-            password: ${{ secrets.CR_PAT }}
-            repository: montferret/chromium
-            tags: latest
-            tag_with_ref: true
-            add_git_labels: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            IMAGE_VERSION=${{ github.event.release.tag_name }}
+            CHROME_VERSION=${{ steps.chrome.outputs.version }}
+            CHROME_CHANNEL=${{ env.CHROME_CHANNEL }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=Ferret Chromium
+            org.opencontainers.image.description=Headless Chrome image for Ferret CDP automation
+            org.opencontainers.image.version=${{ github.event.release.tag_name }}
+            org.opencontainers.image.vendor=MontFerret
+            org.opencontainers.image.url=https://www.montferret.dev/
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            dev.montferret.chrome.version=${{ steps.chrome.outputs.version }}
+            dev.montferret.chrome.channel=${{ env.CHROME_CHANNEL }}

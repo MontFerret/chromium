@@ -1,75 +1,63 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# https://kapeli.com/cheat_sheets/Chromium_Command_Line_Switches.docset/Contents/Resources/Documents/index
-CHROME_ARGS="--disable-background-networking \
+: "${DEBUG_ADDRESS:=0.0.0.0}"
+: "${DEBUG_PORT:=9222}"
+: "${CHROME_INTERNAL_PORT:=9223}"
+: "${USER_DATA_DIR:=/data}"
+: "${CHROME_NO_SANDBOX:=true}"
+: "${CHROME_OPTS:=}"
+
+CHROME_HOST="127.0.0.1"
+
+CHROME_ARGS="\
+--headless=new \
+--remote-debugging-address=$CHROME_HOST \
+--remote-debugging-port=$CHROME_INTERNAL_PORT \
+--user-data-dir=$USER_DATA_DIR \
+--no-first-run \
+--no-default-browser-check \
+--disable-background-networking \
 --disable-background-timer-throttling \
---disable-breakpad \
---disable-canvas-aa \
+--disable-backgrounding-occluded-windows \
 --disable-client-side-phishing-detection \
---disable-cloud-import \
---disable-composited-antialiasing \
+--disable-component-update \
 --disable-default-apps \
---disable-demo-mode \
 --disable-dev-shm-usage \
+--disable-domain-reliability \
 --disable-extensions \
+--disable-features=UseDBus,MediaRouter,OptimizationHints,AutofillServerCommunication,InterestFeedContentSuggestions \
 --disable-hang-monitor \
---disable-gesture-typing \
---disable-gpu \
---disable-gpu-sandbox \
---disable-infobars \
---disable-kill-after-bad-ipc \
---disable-notifications \
---disable-offer-store-unmasked-wallet-cards \
---disable-offer-upload-credit-cards \
---disable-office-editing-component-extension \
---disable-password-generation \
---disable-print-preview \
 --disable-prompt-on-repost \
 --disable-renderer-backgrounding \
---disable-seccomp-filter-sandbox \
---disable-setuid-sandbox \
---disable-smooth-scrolling \
---disable-speech-api \
 --disable-sync \
---disable-tab-for-desktop-share \
---disable-translate \
---disable-voice-input \
---disable-wake-on-wifi \
---disable-web-security \
---disk-cache-dir=/tmp/cache-dir \
---disk-cache-size=10000000 \
---enable-async-dns \
---enable-simple-cache-backend \
---enable-tcp-fast-open \
---enable-webgl \
---font-render-hinting=none \
---headless \
---hide-scrollbars \
---ignore-certificate-errors \
---ignore-certificate-errors-spki-list \
---ignore-gpu-blocklist \
---ignore-ssl-errors \
---log-level=0 \
---media-cache-size=10000000 \
 --metrics-recording-only \
 --mute-audio \
---no-default-browser-check \
---no-experiments \
---no-first-run \
---no-pings \
---no-sandbox \
---no-zygote \
---prerender-from-omnibox=disabled \
---remote-debugging-address=$DEBUG_ADDRESS \
---remote-debugging-port=$DEBUG_PORT \
+--hide-scrollbars \
 --safebrowsing-disable-auto-update \
---use-gl=swiftshader \
---user-data-dir=$HOME"
+--log-level=2"
 
-if [ -n "$CHROME_OPTS" ]; then
-  CHROME_ARGS="${CHROME_ARGS} ${CHROME_OPTS}"
+if [ "$CHROME_NO_SANDBOX" = "true" ]; then
+  CHROME_ARGS="$CHROME_ARGS --no-sandbox"
 fi
 
-# Start Chrome
-exec sh -c "chrome $CHROME_ARGS"
+if [ -n "$CHROME_OPTS" ]; then
+  CHROME_ARGS="$CHROME_ARGS $CHROME_OPTS"
+fi
+
+mkdir -p "$USER_DATA_DIR"
+
+start_proxy() {
+  socat \
+    "TCP-LISTEN:${DEBUG_PORT},bind=${DEBUG_ADDRESS},fork,reuseaddr" \
+    "TCP:${CHROME_HOST}:${CHROME_INTERNAL_PORT}" &
+}
+
+if [ "$(id -u)" = "0" ]; then
+  chown -R ferret:ferret "$USER_DATA_DIR" /home/ferret/.cache
+  start_proxy
+  exec gosu ferret sh -c "chrome $CHROME_ARGS about:blank"
+else
+  start_proxy
+  exec sh -c "chrome $CHROME_ARGS about:blank"
+fi

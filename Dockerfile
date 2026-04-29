@@ -1,36 +1,90 @@
-FROM ubuntu:22.04
+FROM debian:bookworm-slim
 
-LABEL maintainer "MontFerret Team <mont.ferret@gmail.com>"
-LABEL homepage "https://www.montferret.dev/"
+ARG IMAGE_VERSION=dev
+ARG CHROME_VERSION=stable
+ARG CHROME_CHANNEL=Stable
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+
+LABEL org.opencontainers.image.title="Ferret Browser"
+LABEL org.opencontainers.image.description="Headless Chrome browser image for Ferret/CDP automation"
+LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
+LABEL org.opencontainers.image.vendor="MontFerret"
+LABEL org.opencontainers.image.url="https://www.montferret.dev/"
+LABEL org.opencontainers.image.source="https://github.com/MontFerret/ferret"
+LABEL maintainer="MontFerret Team <mont.ferret@gmail.com>"
+LABEL dev.montferret.chrome.version="${CHROME_VERSION}"
+LABEL dev.montferret.chrome.channel="${CHROME_CHANNEL}"
+LABEL dev.montferret.target.platform="${TARGETPLATFORM}"
+LABEL dev.montferret.target.os="${TARGETOS}"
+LABEL dev.montferret.target.arch="${TARGETARCH}"
 
 EXPOSE 9222
 
-# https://omahaproxy.appspot.com/
-# https://chromiumdash.appspot.com/releases?platform=Linux
-ENV REVISION=1097615
-ENV DOWNLOAD_HOST=https://storage.googleapis.com
+ENV USER_DATA_DIR=/data
+ENV DEBUG_ADDRESS=0.0.0.0
+ENV DEBUG_PORT=9222
+ENV CHROME_INTERNAL_PORT=9223
+ENV CHROME_NO_SANDBOX=true
+ENV CHROME_OPTS=""
+ENV HOME=/home/ferret
 
-RUN apt-get update -qqy \
-  && DEBIAN_FRONTEND="noninteractive" apt-get -qqy install apt-transport-https inotify-tools gnupg \
-    libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libcairo2 libcups2 \
-    libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 \
-    libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 \
-    libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxss1 libxtst6 \
-    libappindicator1 libnss3 libnss3-tools libasound2 libatk1.0-0 libc6 ca-certificates fonts-liberation \
-    libatk-bridge2.0-0 libgbm1 lsb-release xdg-utils wget unzip \
-  && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    gosu \
+    jq \
+    socat \
+    unzip \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN wget -q -O chrome-linux.zip "$DOWNLOAD_HOST/chromium-browser-snapshots/Linux_x64/$REVISION/chrome-linux.zip" \
-  && unzip chrome-linux.zip -d /usr/local \
-  && rm chrome-linux.zip \
-  && ln -s /usr/local/chrome-linux/chrome /usr/local/bin/chrome
+RUN useradd -m -u 10001 -s /bin/bash ferret \
+    && mkdir -p /data /home/ferret/.cache \
+    && chown -R ferret:ferret /data /home/ferret
 
-RUN chrome --version
+RUN set -eux; \
+    if [ "${TARGETARCH:-amd64}" != "amd64" ]; then \
+      echo "Chrome for Testing linux64 requires linux/amd64, got TARGETARCH=${TARGETARCH:-unknown}"; \
+      exit 1; \
+    fi; \
+    if [ "$CHROME_VERSION" = "stable" ]; then \
+      resolved_version="$(curl -fsSL https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json \
+        | jq -r --arg channel "$CHROME_CHANNEL" '.channels[$channel].version')"; \
+    else \
+      resolved_version="$CHROME_VERSION"; \
+    fi; \
+    test -n "$resolved_version"; \
+    echo "$resolved_version" > /opt/chrome-version; \
+    url="https://storage.googleapis.com/chrome-for-testing-public/${resolved_version}/linux64/chrome-linux64.zip"; \
+    curl -fsSL "$url" -o /tmp/chrome-linux64.zip; \
+    unzip /tmp/chrome-linux64.zip -d /opt; \
+    rm /tmp/chrome-linux64.zip; \
+    ln -s /opt/chrome-linux64/chrome /usr/local/bin/chrome; \
+    chrome --version || true
 
-COPY entrypoint.sh /
+COPY entrypoint.sh /entrypoint.sh
 
-RUN mkdir /data
-VOLUME /data
-ENV HOME=/data DEBUG_ADDRESS=0.0.0.0 DEBUG_PORT=9222
+RUN chmod +x /entrypoint.sh
+
+VOLUME ["/data"]
 
 ENTRYPOINT ["/entrypoint.sh"]
