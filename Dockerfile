@@ -1,18 +1,16 @@
 FROM debian:bookworm-slim
 
-ARG IMAGE_VERSION=dev
-ARG CHROME_VERSION=stable
+ARG CHROME_VERSION
 ARG CHROME_CHANNEL=Stable
 ARG TARGETPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
 
-LABEL org.opencontainers.image.title="Ferret Browser"
-LABEL org.opencontainers.image.description="Headless Chrome browser image for Ferret/CDP automation"
-LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
+LABEL org.opencontainers.image.title="Ferret Chromium"
+LABEL org.opencontainers.image.description="Headless Chrome image for Ferret CDP automation"
 LABEL org.opencontainers.image.vendor="MontFerret"
 LABEL org.opencontainers.image.url="https://www.montferret.dev/"
-LABEL org.opencontainers.image.source="https://github.com/MontFerret/ferret"
+LABEL org.opencontainers.image.source="https://github.com/MontFerret/chromium"
 LABEL maintainer="MontFerret Team <mont.ferret@gmail.com>"
 LABEL dev.montferret.chrome.version="${CHROME_VERSION}"
 LABEL dev.montferret.chrome.channel="${CHROME_CHANNEL}"
@@ -66,15 +64,12 @@ RUN set -eux; \
       echo "Chrome for Testing linux64 requires linux/amd64, got TARGETARCH=${TARGETARCH:-unknown}"; \
       exit 1; \
     fi; \
-    if [ "$CHROME_VERSION" = "stable" ]; then \
-      resolved_version="$(curl -fsSL https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json \
-        | jq -r --arg channel "$CHROME_CHANNEL" '.channels[$channel].version')"; \
-    else \
-      resolved_version="$CHROME_VERSION"; \
+    if [ -z "${CHROME_VERSION:-}" ]; then \
+      echo "CHROME_VERSION build arg is required"; \
+      exit 1; \
     fi; \
-    test -n "$resolved_version"; \
-    echo "$resolved_version" > /opt/chrome-version; \
-    url="https://storage.googleapis.com/chrome-for-testing-public/${resolved_version}/linux64/chrome-linux64.zip"; \
+    echo "$CHROME_VERSION" > /opt/chrome-version; \
+    url="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip"; \
     curl -fsSL "$url" -o /tmp/chrome-linux64.zip; \
     unzip /tmp/chrome-linux64.zip -d /opt; \
     rm /tmp/chrome-linux64.zip; \

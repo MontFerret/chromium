@@ -63,8 +63,7 @@ jobs:
           push: false
           platforms: linux/amd64
           build-args: |
-            IMAGE_VERSION=dev
             CHROME_VERSION=${{ steps.chrome.outputs.version }}
             CHROME_CHANNEL=${{ env.CHROME_CHANNEL }}
           tags: |
-            montferret/chromium:dev
+            montferret/chromium:ci

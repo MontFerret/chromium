@@ -10,6 +10,8 @@ set -euo pipefail
 
 CHROME_HOST="127.0.0.1"
 
+# Chrome intentionally binds DevTools to 127.0.0.1 inside the container.
+# socat exposes DEBUG_ADDRESS:DEBUG_PORT externally.
 CHROME_ARGS="\
 --headless=new \
 --remote-debugging-address=$CHROME_HOST \

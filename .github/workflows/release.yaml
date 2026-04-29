@@ -44,6 +44,30 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Chrome version: $version"
 
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          chrome_version="${{ steps.chrome.outputs.version }}"
+          release_tag="${{ github.event.release.tag_name }}"
+
+          if [ "$release_tag" = "$chrome_version" ]; then
+            echo "Release tag matches Chrome version: $release_tag"
+            exit 0
+          fi
+
+          if echo "$release_tag" | grep -Eq "^${chrome_version}-r[0-9]+$"; then
+            echo "Release tag is a packaging revision for Chrome version: $release_tag"
+            exit 0
+          fi
+
+          echo "Invalid release tag: $release_tag" >&2
+          echo "Expected either:" >&2
+          echo "  ${chrome_version}" >&2
+          echo "  ${chrome_version}-rN" >&2
+          exit 1
+
       - name: Validate Chrome for Testing download
         shell: bash
         run: |
@@ -62,17 +86,13 @@ jobs:
           set -euo pipefail
 
           release_tag="${{ github.event.release.tag_name }}"
-          chrome_version="${{ steps.chrome.outputs.version }}"
           prerelease="${{ github.event.release.prerelease }}"
 
           {
             echo "tags<<EOF"
 
             echo "${IMAGE_DOCKERHUB}:${release_tag}"
-            echo "${IMAGE_DOCKERHUB}:${release_tag}-chrome${chrome_version}"
-
             echo "${IMAGE_GHCR}:${release_tag}"
-            echo "${IMAGE_GHCR}:${release_tag}-chrome${chrome_version}"
 
             if [ "$prerelease" = "false" ]; then
               echo "${IMAGE_DOCKERHUB}:latest"
@@ -105,10 +125,10 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: ./Dockerfile
           push: true
           platforms: linux/amd64
           build-args: |
-            IMAGE_VERSION=${{ github.event.release.tag_name }}
             CHROME_VERSION=${{ steps.chrome.outputs.version }}
             CHROME_CHANNEL=${{ env.CHROME_CHANNEL }}
           tags: ${{ steps.tags.outputs.tags }}
