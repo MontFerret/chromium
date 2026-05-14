@@ -28,7 +28,7 @@ CHROME_ARGS="\
 --disable-dev-shm-usage \
 --disable-domain-reliability \
 --disable-extensions \
---disable-features=UseDBus,MediaRouter,OptimizationHints,AutofillServerCommunication,InterestFeedContentSuggestions \
+--disable-features=UseDBus,MediaRouter,OptimizationHints,AutofillServerCommunication,InterestFeedContentSuggestions,ServiceWorkerStaticRouter,Prerender2,BackForwardCache \
 --disable-hang-monitor \
 --disable-prompt-on-repost \
 --disable-renderer-backgrounding \
@@ -37,7 +37,9 @@ CHROME_ARGS="\
 --mute-audio \
 --hide-scrollbars \
 --safebrowsing-disable-auto-update \
---log-level=2"
+--log-level=2 \
+--disable-crash-reporter \
+--disable-breakpad"
 
 if [ "$CHROME_NO_SANDBOX" = "true" ]; then
   CHROME_ARGS="$CHROME_ARGS --no-sandbox"
@@ -53,6 +55,13 @@ start_proxy() {
   socat \
     "TCP-LISTEN:${DEBUG_PORT},bind=${DEBUG_ADDRESS},fork,reuseaddr" \
     "TCP:${CHROME_HOST}:${CHROME_INTERNAL_PORT}" &
+    SOCAT_PID=$!
+    sleep 0.2
+
+    if ! kill -0 "$SOCAT_PID" 2>/dev/null; then
+      echo "Failed to start DevTools proxy on ${DEBUG_ADDRESS}:${DEBUG_PORT}" >&2
+      exit 1
+    fi
 }
 
 if [ "$(id -u)" = "0" ]; then
