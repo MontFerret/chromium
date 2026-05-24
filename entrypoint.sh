@@ -17,6 +17,7 @@ CHROME_HOST="127.0.0.1"
 # socat exposes DEBUG_ADDRESS:DEBUG_PORT externally.
 CHROME_ARGS="\
 --headless=new \
+--user-agent=\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\" \
 --remote-debugging-address=$CHROME_HOST \
 --remote-debugging-port=$CHROME_INTERNAL_PORT \
 --user-data-dir=$USER_DATA_DIR \
