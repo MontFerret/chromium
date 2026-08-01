@@ -1,6 +1,7 @@
 # Chromium
 
 The project provides a Docker image containing an optimized version of Chromium for scraping, profiling, or testing web pages.
+It's based on the official [Chromium builds](https://chromiumdash.appspot.com/releases) and includes additional dependencies for running in a headless mode.
 
 
 ## Running
