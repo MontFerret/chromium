@@ -1,0 +1,32 @@
+name: Ferret HTML compatibility
+description: Exercise the candidate image through the published Ferret CDP driver
+inputs:
+  mode:
+    description: smoke or full
+    required: true
+  image:
+    description: Local candidate image tag
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+        cache: false
+    - shell: bash
+      run: sudo apt-get update -qq && sudo apt-get install -y python3-pil poppler-utils
+    - name: Test candidate
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        IMAGE: ${{ inputs.image }}
+      run: |
+        set -o pipefail
+        /usr/bin/python3 -u compatibility/run.py "$MODE" "$IMAGE" 2>&1 | tee "$RUNNER_TEMP/compatibility.log"
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: chromium-compatibility-${{ inputs.mode }}
+        path: ${{ runner.temp }}/compatibility.log
+        if-no-files-found: ignore

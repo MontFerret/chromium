@@ -1,0 +1,4 @@
+LET page = WEB::HTML::PARSE("<html><body><h1>Ferret compatibility</h1></body></html>", { driver: "cdp" })
+T::EQ(WEB::HTML::INNER_TEXT(page, "h1"), "Ferret compatibility")
+
+RETURN ENCODING::BASE64_ENCODE(WEB::HTML::PDF(page))

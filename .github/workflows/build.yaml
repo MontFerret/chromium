@@ -20,6 +20,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Test Chromium updater
+        run: python3 -m unittest discover -s scripts
+
       - name: Read Chrome version
         id: chrome
         shell: bash
@@ -60,10 +63,16 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: false
+          load: true
           platforms: linux/amd64
           build-args: |
             CHROME_VERSION=${{ steps.chrome.outputs.version }}
             CHROME_CHANNEL=${{ env.CHROME_CHANNEL }}
           tags: |
             montferret/chromium:ci
+
+      - name: Test Ferret HTML compatibility
+        uses: ./.github/actions/compatibility
+        with:
+          mode: smoke
+          image: montferret/chromium:ci

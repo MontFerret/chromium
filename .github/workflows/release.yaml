@@ -1,6 +1,7 @@
 name: Build and push Docker images
 
 on:
+  workflow_dispatch:
   release:
     types:
       - published
@@ -10,7 +11,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE_DOCKERHUB: montferret/chromium
+  IMAGE_DOCKERHUB: docker.io/montferret/chromium
   IMAGE_GHCR: ghcr.io/montferret/chromium
   CHROME_CHANNEL: Stable
 
@@ -22,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Read Chrome version
         id: chrome
@@ -45,19 +48,22 @@ jobs:
           echo "Chrome version: $version"
 
       - name: Validate release tag
+        if: github.event_name == 'release'
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
 
           chrome_version="${{ steps.chrome.outputs.version }}"
-          release_tag="${{ github.event.release.tag_name }}"
+          release_tag="$RELEASE_TAG"
 
           if [ "$release_tag" = "$chrome_version" ]; then
             echo "Release tag matches Chrome version: $release_tag"
             exit 0
           fi
 
-          if echo "$release_tag" | grep -Eq "^${chrome_version}-r[0-9]+$"; then
+          if [[ "$release_tag" =~ ^"${chrome_version}"-r[0-9]+$ ]]; then
             echo "Release tag is a packaging revision for Chrome version: $release_tag"
             exit 0
           fi
@@ -80,12 +86,15 @@ jobs:
           curl -fsI "$url" >/dev/null
 
       - name: Prepare Docker tags
+        if: github.event_name == 'release'
         id: tags
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         shell: bash
         run: |
           set -euo pipefail
 
-          release_tag="${{ github.event.release.tag_name }}"
+          release_tag="$RELEASE_TAG"
           prerelease="${{ github.event.release.prerelease }}"
 
           {
@@ -105,40 +114,63 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build release artifact
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
-          push: true
+          outputs: type=oci,dest=${{ runner.temp }}/chromium.tar
           platforms: linux/amd64
           build-args: |
             CHROME_VERSION=${{ steps.chrome.outputs.version }}
             CHROME_CHANNEL=${{ env.CHROME_CHANNEL }}
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: montferret/chromium:candidate
           labels: |
             org.opencontainers.image.title=Ferret Chromium
             org.opencontainers.image.description=Headless Chrome image for Ferret CDP automation
-            org.opencontainers.image.version=${{ github.event.release.tag_name }}
+            org.opencontainers.image.version=${{ github.event.release.tag_name || steps.chrome.outputs.version }}
             org.opencontainers.image.vendor=MontFerret
             org.opencontainers.image.url=https://www.montferret.dev/
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             dev.montferret.chrome.version=${{ steps.chrome.outputs.version }}
             dev.montferret.chrome.channel=${{ env.CHROME_CHANNEL }}
+
+      - name: Load the release artifact for testing
+        run: |
+          command -v skopeo || { sudo apt-get update -qq && sudo apt-get install -y skopeo; }
+          skopeo --override-os linux --override-arch amd64 copy \
+            "oci-archive:$RUNNER_TEMP/chromium.tar" docker-daemon:montferret/chromium:candidate
+
+      - name: Gate publication on the full browser suite
+        uses: ./.github/actions/compatibility
+        with:
+          mode: full
+          image: montferret/chromium:candidate
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'release'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'release'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the tested release artifact
+        if: github.event_name == 'release'
+        env:
+          TAGS: ${{ steps.tags.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            skopeo copy --all --preserve-digests "oci-archive:$RUNNER_TEMP/chromium.tar" "docker://$tag"
+          done <<< "$TAGS"
