@@ -71,6 +71,8 @@ python3 compatibility/run.py full montferret/chromium:ci \
   --ferret v2.0.0-alpha.61 --html v1.0.0-rc.24
 ```
 
-On failure, the runner repeats the failing checks against the published GHCR `stable` image with the same runtime. CI saves the image identities, versions, per-case outcomes, and browser logs in the `chromium-compatibility-smoke` or `chromium-compatibility-full` artifact. A shared failure also blocks release.
+Lab serves the upstream static pages and mock REST API with URLs reachable from the browser container. If a runtime stalls for 115 seconds, including during cleanup, it prints its active stage and goroutine stacks and exits with status 124 before Lab's 120-second limit.
+
+On failure, the runner repeats the failing checks against the published GHCR `stable` image with the same runtime. CI saves the image identities, versions, per-case outcomes, runtime timeout diagnostics, and browser logs in the `chromium-compatibility-smoke` or `chromium-compatibility-full` artifact. A shared failure also blocks release.
 
 Manually run the **Build and push Docker images** workflow to test a release artifact without publishing. On a published GitHub release, the workflow runs the full suite before copying the tested OCI archive to Docker Hub and GHCR. Stable releases also update the `latest` and `stable` aliases.

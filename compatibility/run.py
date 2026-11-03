@@ -45,7 +45,8 @@ def output(*args, **kwargs):
 
 
 def prepare(work, args):
-    go = partial(output, "go", env={**os.environ, "GOWORK": "off", "GOBIN": str(work)}, cwd=work)
+    go_env = {**os.environ, "GOWORK": "off", "GOBIN": str(work)}
+    go = partial(output, "go", env=go_env, cwd=work)
     go("mod", "init", "montferret.dev/chromium/compat")
     versions = {}
     for module, pin in [(FERRET, args.ferret), (HTML, args.html)]:
@@ -56,7 +57,9 @@ def prepare(work, args):
         print(f"{module} {versions[module]}", flush=True)
         go("mod", "edit", f"-require={module}@{versions[module]}")
 
-    shutil.copy(HERE / "runtime.go", work)
+    for source in HERE.glob("*.go"):
+        shutil.copy(source, work)
+    subprocess.run(["go", "test", "-mod=mod", "."], env=go_env, cwd=work, check=True)
     go("build", "-mod=mod", "-o", "runtime", ".")
     linked = [line.split() for line in go("version", "-m", "runtime").splitlines()]
     for module, version in versions.items():
@@ -67,7 +70,7 @@ def prepare(work, args):
     repo = work / "contrib"
     subprocess.run(["git", "clone", "--quiet", "--depth=1", "--filter=blob:none", "--sparse",
                     "--branch", tag, "https://github.com/MontFerret/contrib.git", repo], check=True)
-    output("git", "-C", repo, "sparse-checkout", "set", ".github/workflows", "tests/data/pages",
+    output("git", "-C", repo, "sparse-checkout", "set", ".github/workflows", "tests/data/pages", "tests/data/api/rest",
            "tests/modules/web/html/dynamic")
     ci = (repo / ".github/workflows/integration.yml").read_text()
     pins = set(re.findall(r"go install github\.com/MontFerret/lab/v2@(v[\w.-]+)", ci))
@@ -164,6 +167,7 @@ def check_case(work, case, env):
                "--timeout=120", "--attempts=1", "--times=1", "--concurrency=1",
                "--serve-bind=0.0.0.0", "--serve-host=host.docker.internal",
                "--serve=" + str(tests / "data/pages/static"), "--serve=" + str(tests / "data/pages/dynamic"),
+               "--mock=" + str(tests / "data/api/rest/spec.yaml") + "@api",
                "--files=" + str(tests / "modules/web/html/dynamic" / case)]
     result = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, timeout=135)
